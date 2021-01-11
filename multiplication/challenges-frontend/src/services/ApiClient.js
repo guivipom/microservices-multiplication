@@ -1,8 +1,10 @@
+
 class ApiClient {
 
     static SERVER_URL = 'http://localhost:8080';
     static GET_CHALLENGE = '/challenges/random';
     static POST_RESULT = '/attempts';
+    static GET_ATTEMPTS_BY_ALIAS = '/attempts?alias=';
 
     static challenge(): Promise<Response> {
         return fetch(ApiClient.SERVER_URL + ApiClient.GET_CHALLENGE);
@@ -28,5 +30,12 @@ class ApiClient {
                 )
             });
     }
+
+    static getAttempts(userAlias: string): Promise<Response> {
+        console.log('Get attempts for '+userAlias);
+        return fetch(ApiClient.SERVER_URL +
+            ApiClient.GET_ATTEMPTS_BY_ALIAS + userAlias);
+    }
 }
+
 export default ApiClient;

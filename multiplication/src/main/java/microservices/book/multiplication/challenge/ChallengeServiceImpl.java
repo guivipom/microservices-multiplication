@@ -1,15 +1,38 @@
 package microservices.book.multiplication.challenge;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import microservices.book.multiplication.serviceclients.GamificationServiceClient;
 import microservices.book.multiplication.user.User;
+import microservices.book.multiplication.user.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
+@Slf4j
+@RequiredArgsConstructor
 @Service
 public class ChallengeServiceImpl implements ChallengeService {
+    private final UserRepository userRepository;
+    private final ChallengeAttemptRepository attemptRepository;
+    private final GamificationServiceClient gameClient;
+
     @Override
     public ChallengeAttempt verifyAttempt(ChallengeAttemptDTO attemptDTO) {
-        boolean isCorrect = attemptDTO.getGuess() == attemptDTO.getFactorA() * attemptDTO.getFactorB();
 
-        User user = new User(null, attemptDTO.getUserAlias());
+        // find user, if not found create new one
+        User user = userRepository.findByAlias(attemptDTO.getUserAlias())
+                .orElseGet(() -> {
+                    log.info("Creating new user with alias {}",
+                            attemptDTO.getUserAlias());
+                    return userRepository.save(
+                            new User(attemptDTO.getUserAlias())
+                    );
+                });
+
+        boolean isCorrect = attemptDTO.getGuess() ==
+                attemptDTO.getFactorA() * attemptDTO.getFactorB();
 
         ChallengeAttempt checkedAttempt = new ChallengeAttempt(null,
                 user,
@@ -18,6 +41,15 @@ public class ChallengeServiceImpl implements ChallengeService {
                 attemptDTO.getGuess(),
                 isCorrect
         );
-        return checkedAttempt;
+        ChallengeAttempt storedAttempt = attemptRepository.save(checkedAttempt);
+
+        gameClient.sendAttempt(storedAttempt);
+
+        return storedAttempt;
+    }
+
+    @Override
+    public List<ChallengeAttempt> getStatsForUser(String userAlias) {
+        return attemptRepository.findTop10ByUserAliasOrderByIdDesc(userAlias);
     }
 }
